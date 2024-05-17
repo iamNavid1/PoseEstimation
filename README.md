@@ -1,13 +1,12 @@
 <div align="center">
   <img src="resources/3D Pose.png" width="550"/>
-  <div>&nbsp;</div>
   <div align="center">
     <b>3D Pose Visualization</b>
   </div>
+  <div>&nbsp;</div>  
 </div>
 <div align="center">
   <img src="resources/2D Pose.png" width="550"/>
-  <div>&nbsp;</div>
   <div align="center">  
     <b>2D Pose Visualization</b>
   </div>
