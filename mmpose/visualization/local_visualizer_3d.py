@@ -1,3 +1,4 @@
+# Modified version of mmpose visualization by Navid Salami Pargoo
 # Copyright (c) OpenMMLab. All rights reserved.
 import math
 from typing import Dict, List, Optional, Tuple, Union
@@ -14,6 +15,7 @@ from mmpose.registry import VISUALIZERS
 from mmpose.structures import PoseDataSample
 from . import PoseLocalVisualizer
 
+import colorsys
 
 @VISUALIZERS.register_module()
 class Pose3dLocalVisualizer(PoseLocalVisualizer):
@@ -78,6 +80,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
     def _draw_3d_data_samples(self,
                               image: np.ndarray,
                               pose_samples: PoseDataSample,
+                              track_ids: List[int] = [],
                               draw_gt: bool = True,
                               kpt_thr: float = 0.3,
                               num_instances=-1,
@@ -147,25 +150,40 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
 
         plt.ioff()
         fig = plt.figure(
-            figsize=(vis_width * num_instances * 0.01, vis_height * 0.01))
+            figsize=(12.8, 7.2))
 
         def _draw_3d_instances_kpts(keypoints,
                                     scores,
                                     scores_2d,
                                     keypoints_visible,
+                                    track_ids,
                                     fig_idx,
                                     show_kpt_idx,
                                     title=None):
 
+            def get_color(number):
+                " Converts an integer number to a color "
+                # change these however you want to
+                hue = number*30 % 180
+                saturation = number*103 % 256
+                value = number*50% 256
+                
+                # expects normalized values
+                color = colorsys.hsv_to_rgb (hue/179, saturation/255, value/255)
+                return color
+
             for idx, (kpts, score, score_2d) in enumerate(
                     zip(keypoints, scores, scores_2d)):
 
+                if track_ids[idx] == -1:
+                    continue
+                
                 valid = np.logical_and(score >= kpt_thr, score_2d >= kpt_thr,
                                        np.any(~np.isnan(kpts), axis=-1))
 
                 kpts_valid = kpts[valid]
                 ax = fig.add_subplot(
-                    1, num_fig, fig_idx * (idx + 1), projection='3d')
+                    2, 4, fig_idx * (idx + 1), projection='3d')
                 ax.view_init(elev=axis_elev, azim=axis_azimuth)
                 ax.set_aspect('auto')
                 ax.set_xticks([])
@@ -175,7 +193,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 ax.set_yticklabels([])
                 ax.set_zticklabels([])
                 if title:
-                    ax.set_title(f'{title} ({idx})')
+                    ax.set_title(f'{title} ({track_ids[idx]})', color='white', backgroundcolor=get_color(track_ids[idx]*50))
                 ax.dist = axis_dist
 
                 x_c = np.mean(kpts_valid[:, 0]) if valid.any() else 0
@@ -252,8 +270,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 keypoints_visible = np.ones(keypoints.shape[:-1])
 
             _draw_3d_instances_kpts(keypoints, scores, scores_2d,
-                                    keypoints_visible, 1, show_kpt_idx,
-                                    'Prediction')
+                                    keypoints_visible, track_ids, 1, show_kpt_idx,
+                                    'Track id')
 
         if draw_gt and 'gt_instances' in pose_samples:
             gt_instances = pose_samples.gt_instances
@@ -284,7 +302,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 scores_2d = np.ones(keypoints.shape[:-1])
 
             _draw_3d_instances_kpts(keypoints, scores, scores_2d,
-                                    keypoints_visible, 2, show_kpt_idx,
+                                    keypoints_visible, track_ids, 2, show_kpt_idx,
                                     'Ground Truth')
 
         # convert figure to numpy array
@@ -300,7 +318,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
             width, height = fig.get_size_inches() * fig.get_dpi()
             pred_img_data = pred_img_data.reshape(
                 int(height),
-                int(width) * num_instances, 3)
+                int(width), 3)
 
         plt.close(fig)
 
@@ -311,7 +329,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                              instances: InstanceData,
                              kpt_thr: float = 0.3,
                              show_kpt_idx: bool = False,
-                             skeleton_style: str = 'mmpose'):
+                             skeleton_style: str = 'mmpose',
+                             track_ids: Optional[List[int]] = []):
         """Draw keypoints and skeletons (optional) of GT or prediction.
 
         Args:
@@ -378,8 +397,11 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
             if self.det_kpt_color is not None:
                 kpt_color = self.det_kpt_color
 
-            for kpts, score, visible in zip(keypoints, scores,
-                                            keypoints_visible):
+            for idx, (kpts, score, visible) in enumerate(zip(keypoints, scores,
+                                            keypoints_visible)):
+                if track_ids[idx] == -1:
+                    continue
+
                 kpts = np.array(kpts[..., :2], copy=False)
 
                 if kpt_color is None or isinstance(kpt_color, str):
@@ -491,7 +513,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                        name: str,
                        image: np.ndarray,
                        data_sample: PoseDataSample,
-                       det_data_sample: Optional[PoseDataSample] = None,
+                       det_data_sample: Optional[PoseDataSample] = [],
+                       track_ids: Optional[List[int]] = None,
                        draw_gt: bool = True,
                        draw_pred: bool = True,
                        draw_2d: bool = True,
@@ -583,7 +606,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                     instances=det_data_sample.pred_instances,
                     kpt_thr=kpt_thr,
                     show_kpt_idx=show_kpt_idx,
-                    skeleton_style=skeleton_style)
+                    skeleton_style=skeleton_style,
+                    track_ids=track_ids)
                 if draw_bbox:
                     det_img_data = self._draw_instances_bbox(
                         det_img_data, det_data_sample.pred_instances)
@@ -596,7 +620,9 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
         pred_img_data = self._draw_3d_data_samples(
             image.copy(),
             data_sample,
+            track_ids,
             draw_gt=draw_gt,
+            kpt_thr=kpt_thr,
             num_instances=num_instances,
             axis_azimuth=axis_azimuth,
             axis_limit=axis_limit,
@@ -605,20 +631,11 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
             axis_elev=axis_elev,
             scores_2d=scores_2d)
 
-        # merge visualization results
+        # change detection channel to rgb
         if det_img_data is not None:
-            width = max(pred_img_data.shape[1] - det_img_data.shape[1], 0)
-            height = max(pred_img_data.shape[0] - det_img_data.shape[0], 0)
-            det_img_data = cv2.copyMakeBorder(
-                det_img_data,
-                height // 2,
-                (height // 2 + 1) if height % 2 == 1 else height // 2,
-                width // 2, (width // 2 + 1) if width % 2 == 1 else width // 2,
-                cv2.BORDER_CONSTANT,
-                value=(255, 255, 255))
-            drawn_img = np.concatenate((det_img_data, pred_img_data), axis=1)
-        else:
-            drawn_img = pred_img_data
+            det_img_data = det_img_data[..., ::-1]
+            
+        drawn_img = np.concatenate((det_img_data, pred_img_data), axis=1)
 
         # It is convenient for users to obtain the drawn image.
         # For example, the user wants to obtain the drawn image and
@@ -634,4 +651,4 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
             # save drawn_img to backends
             self.add_image(name, drawn_img, step)
 
-        return self.get_image()
+        return det_img_data, pred_img_data
