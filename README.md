@@ -3,13 +3,16 @@
   <div>&nbsp;</div>
   <div align="center">
     <b>3D Pose Visualization</b>
-  <img src="resources/3D Pose.png" width="450"/>
+  </div>
+</div>
+<div>
+  <img src="resources/2D Pose.png" width="450"/>
   <div>&nbsp;</div>
   <div align="center">  
     <b>2D Pose Visualization</b>
   </div>
   <div>&nbsp;</div>
-
+</div>
 
 ## Original MMPose Introduction
 
