@@ -121,8 +121,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
         Returns:
             Tuple(np.ndarray): the drawn image which channel is RGB.
         """
-        vis_width = max(image.shape)
-        vis_height = vis_width
+        vis_width = image.shape[1]
+        vis_height = image.shape[0]
 
         if 'pred_instances' in pose_samples:
             pred_instances = pose_samples.pred_instances
@@ -150,7 +150,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
 
         plt.ioff()
         fig = plt.figure(
-            figsize=(12.8, 7.2))
+            figsize=(vis_width/100, vis_height/100),
+            dpi=100)
 
         def _draw_3d_instances_kpts(keypoints,
                                     scores,
@@ -315,10 +316,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
         if not pred_img_data.any():
             pred_img_data = np.full((vis_height, vis_width, 3), 255)
         else:
-            width, height = fig.get_size_inches() * fig.get_dpi()
-            pred_img_data = pred_img_data.reshape(
-                int(height),
-                int(width), 3)
+            pred_img_data = pred_img_data.reshape(vis_height, vis_width, 3)
+
 
         plt.close(fig)
 
