@@ -193,7 +193,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 ax.set_yticklabels([])
                 ax.set_zticklabels([])
                 if title:
-                    ax.set_title(f'{title} ({track_ids[idx]})', color='white', backgroundcolor=get_color(track_ids[idx]*50))
+                    ax.set_title(f'{title} ({track_ids[idx]})', color='white', backgroundcolor=get_color(track_ids[idx]))
                 ax.dist = axis_dist
 
                 x_c = np.mean(kpts_valid[:, 0]) if valid.any() else 0
