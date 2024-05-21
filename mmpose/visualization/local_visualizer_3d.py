@@ -162,16 +162,16 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                                     show_kpt_idx,
                                     title=None):
 
-            def get_color(number):
-                " Converts an integer number to a color "
-                # change these however you want to
-                hue = number*30 % 180
-                saturation = number*103 % 256
-                value = number*50% 256
-                
-                # expects normalized values
-                color = colorsys.hsv_to_rgb (hue/179, saturation/255, value/255)
-                return color
+            def get_color(idx):
+                golden_ratio_conjugate = 0.618033988749895
+                h = (idx * golden_ratio_conjugate) % 1.0
+                # s = 0.5 + 0.5 * (idx % 2)  # Alternating saturation for variety
+                s = 0.4 + (idx % 5) * 0.1
+                # l = 0.5  # Fixed lightness for consistency
+                l = 0.4 + (idx % 3) * 0.1
+                r, g, b = colorsys.hls_to_rgb(h, l, s)
+                r, g, b = int(r * 255), int(g * 255), int(b * 255)
+                return [r, g, b]
 
             for idx, (kpts, score, score_2d) in enumerate(
                     zip(keypoints, scores, scores_2d)):
