@@ -170,7 +170,6 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 # l = 0.5  # Fixed lightness for consistency
                 l = 0.4 + (idx % 3) * 0.1
                 r, g, b = colorsys.hls_to_rgb(h, l, s)
-                r, g, b = int(r * 255), int(g * 255), int(b * 255)
                 return [r, g, b]
 
             for idx, (kpts, score, score_2d) in enumerate(
