@@ -168,6 +168,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 kpts_valid = kpts[valid]
 
                 # Create a new figure for each instance
+                plt.ioff()
                 fig = plt.figure(
                     figsize=(plot_size/100, plot_size/100), 
                     dpi=100
