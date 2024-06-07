@@ -9,7 +9,10 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import mmcv
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') 
 from matplotlib import pyplot as plt
+plt.ioff()
 from mmengine.dist import master_only
 from mmengine.structures import InstanceData
 
@@ -168,7 +171,6 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 kpts_valid = kpts[valid]
 
                 # Create a new figure for each instance
-                plt.ioff()
                 fig = plt.figure(
                     figsize=(plot_size/100, plot_size/100), 
                     dpi=100
