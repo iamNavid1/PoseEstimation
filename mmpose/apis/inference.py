@@ -141,8 +141,8 @@ def inference_topdown(model: nn.Module,
         model (nn.Module): The top-down pose estimator
         img (np.ndarray | str): The loaded image or image file to inference
         bboxes (np.ndarray, optional): The bboxes in shape (N, 4), each row
-            represents a bbox. If not given, the entire image will be regarded
-            as a single bbox area. Defaults to ``None``
+            represents a bbox. If not given, the inference will be skipped.
+            Defaults to ``None``
         bbox_format (str): The bbox format indicator. Options are ``'xywh'``
             and ``'xyxy'``. Defaults to ``'xyxy'``
 
@@ -158,13 +158,9 @@ def inference_topdown(model: nn.Module,
     pipeline = Compose(model.cfg.test_dataloader.dataset.pipeline)
 
     if bboxes is None or len(bboxes) == 0:
-        # get bbox from the image size
-        if isinstance(img, str):
-            w, h = Image.open(img).size
-        else:
-            h, w = img.shape[:2]
+        # Don't do inference
+        return []
 
-        bboxes = np.array([[0, 0, w, h]], dtype=np.float32)
     else:
         if isinstance(bboxes, list):
             bboxes = np.array(bboxes)
