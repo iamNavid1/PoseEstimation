@@ -165,8 +165,6 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 return [r, g, b]
 
             for idx, (kpts, score, score_2d) in enumerate(zip(keypoints, scores, scores_2d)):
-                # print(f"score{idx}: ", score)
-                # print(f"score_2d{idx}: ", score_2d)
                 skip = False
                 if track_ids[idx] == -1:
                     continue
@@ -175,7 +173,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 # kpts_valid = kpts[valid]
                 kpts_valid = kpts
 
-                if np.mean(score) < .2 or np.mean(score_2d) < .2:
+                if np.mean(score) < kpt_thr or np.mean(score_2d) < kpt_thr:
                     skip = True
 
                 # Create a new figure for each instance
