@@ -124,7 +124,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
         Returns:
             List[np.ndarray]: the list of drawn 3d pose estimations.
         """
-        pose3d_data_list = []  # List to store individual subplots
+        pose3d_data_dic = {}  # Dictionary to store individual subplots
+        need_dummy_plot = False # if len(pred_instances) is less than num_instances
 
         if 'pred_instances' in pose_samples:
             pred_instances = pose_samples.pred_instances
@@ -144,7 +145,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                     pred_instances_.set_field(new_val, k)
                 pred_instances = pred_instances_
             else:
-                num_instances = len(pred_instances)
+                need_dummy_plot = True
 
         def _draw_3d_instances_kpts(keypoints,
                                     scores,
@@ -164,11 +165,18 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                 return [r, g, b]
 
             for idx, (kpts, score, score_2d) in enumerate(zip(keypoints, scores, scores_2d)):
+                # print(f"score{idx}: ", score)
+                # print(f"score_2d{idx}: ", score_2d)
+                skip = False
                 if track_ids[idx] == -1:
                     continue
-                valid = np.logical_and(score >= kpt_thr, score_2d >= kpt_thr,
-                                       np.any(~np.isnan(kpts), axis=-1))
-                kpts_valid = kpts[valid]
+                # valid = np.logical_and(score >= kpt_thr, score_2d >= kpt_thr,
+                #                        np.any(~np.isnan(kpts), axis=-1))
+                # kpts_valid = kpts[valid]
+                kpts_valid = kpts
+
+                if np.mean(score) < .2 or np.mean(score_2d) < .2:
+                    skip = True
 
                 # Create a new figure for each instance
                 fig = plt.figure(
@@ -187,53 +195,63 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
 
                 if title:
                     ax.set_title(f'{title} ({track_ids[idx]})', color='white', backgroundcolor=get_color(track_ids[idx]))
+                    ax.title.set_fontweight('bold')
+                    ax.title.set_fontsize(20)
                 ax.dist = axis_dist
 
-                x_c = np.mean(kpts_valid[:, 0]) if valid.any() else 0
-                y_c = np.mean(kpts_valid[:, 1]) if valid.any() else 0
-                z_c = np.mean(kpts_valid[:, 2]) if valid.any() else 0
+                if skip:
+                    fig.tight_layout()
+                    fig.canvas.draw()
+                else:                    
+                    # x_c = np.mean(kpts_valid[:, 0]) if valid.any() else 0
+                    # y_c = np.mean(kpts_valid[:, 1]) if valid.any() else 0
+                    # z_c = np.mean(kpts_valid[:, 2]) if valid.any() else 0
+                    x_c = np.mean(kpts_valid[:, 0])
+                    y_c = np.mean(kpts_valid[:, 1])
+                    z_c = np.mean(kpts_valid[:, 2])
 
-                ax.set_xlim3d([x_c - axis_limit / 2, x_c + axis_limit / 2])
-                ax.set_ylim3d([y_c - axis_limit / 2, y_c + axis_limit / 2])
-                ax.set_zlim3d([min(0, z_c - axis_limit / 2), z_c + axis_limit / 2])
+                    ax.set_xlim3d([x_c - axis_limit / 2, x_c + axis_limit / 2])
+                    ax.set_ylim3d([y_c - axis_limit / 2, y_c + axis_limit / 2])
+                    ax.set_zlim3d([min(0, z_c - axis_limit / 2), z_c + axis_limit / 2])
 
-                if self.kpt_color is None or isinstance(self.kpt_color, str):
-                    kpt_color = [self.kpt_color] * len(kpts)
-                elif len(self.kpt_color) == len(kpts):
-                    kpt_color = self.kpt_color
-                else:
-                    raise ValueError(f'the length of kpt_color ({len(self.kpt_color)}) does not matches that of keypoints ({len(kpts)})')
-
-                x_3d, y_3d, z_3d = np.split(kpts_valid[:, :3], [1, 2], axis=1)
-                kpt_color = kpt_color[valid] / 255.
-                ax.scatter(x_3d, y_3d, z_3d, marker='o', c=kpt_color)
-
-                if show_kpt_idx:
-                    for kpt_idx in range(len(x_3d)):
-                        ax.text(x_3d[kpt_idx][0], y_3d[kpt_idx][0],
-                                z_3d[kpt_idx][0], str(kpt_idx))
-
-                if self.skeleton is not None and self.link_color is not None:
-                    if self.link_color is None or isinstance(self.link_color, str):
-                        link_color = [self.link_color] * len(self.skeleton)
-                    elif len(self.link_color) == len(self.skeleton):
-                        link_color = self.link_color
+                    if self.kpt_color is None or isinstance(self.kpt_color, str):
+                        kpt_color = [self.kpt_color] * len(kpts)
+                    elif len(self.kpt_color) == len(kpts):
+                        kpt_color = self.kpt_color
                     else:
-                        raise ValueError(f'the length of link_color ({len(self.link_color)}) does not matches that of skeleton ({len(self.skeleton)})')
+                        raise ValueError(f'the length of kpt_color ({len(self.kpt_color)}) does not matches that of keypoints ({len(kpts)})')
 
-                    for sk_id, sk in enumerate(self.skeleton):
-                        sk_indices = [_i for _i in sk]
-                        xs_3d = kpts[sk_indices, 0]
-                        ys_3d = kpts[sk_indices, 1]
-                        zs_3d = kpts[sk_indices, 2]
-                        kpt_score = score[sk_indices]
-                        kpt_score_2d = score_2d[sk_indices]
-                        if kpt_score.min() > kpt_thr and kpt_score_2d.min() > kpt_thr:
-                            _color = link_color[sk_id] / 255.
-                            ax.plot(xs_3d, ys_3d, zs_3d, color=_color, zdir='z')
+                    x_3d, y_3d, z_3d = np.split(kpts_valid[:, :3], [1, 2], axis=1)
+                    # kpt_color = kpt_color[valid] / 255.
+                    kpt_color = kpt_color / 255.
+                    ax.scatter(x_3d, y_3d, z_3d, marker='o', c=kpt_color)
 
-                fig.tight_layout()
-                fig.canvas.draw()
+                    if show_kpt_idx:
+                        for kpt_idx in range(len(x_3d)):
+                            ax.text(x_3d[kpt_idx][0], y_3d[kpt_idx][0],
+                                    z_3d[kpt_idx][0], str(kpt_idx))
+
+                    if self.skeleton is not None and self.link_color is not None:
+                        if self.link_color is None or isinstance(self.link_color, str):
+                            link_color = [self.link_color] * len(self.skeleton)
+                        elif len(self.link_color) == len(self.skeleton):
+                            link_color = self.link_color
+                        else:
+                            raise ValueError(f'the length of link_color ({len(self.link_color)}) does not matches that of skeleton ({len(self.skeleton)})')
+
+                        for sk_id, sk in enumerate(self.skeleton):
+                            sk_indices = [_i for _i in sk]
+                            xs_3d = kpts[sk_indices, 0]
+                            ys_3d = kpts[sk_indices, 1]
+                            zs_3d = kpts[sk_indices, 2]
+                            kpt_score = score[sk_indices]
+                            kpt_score_2d = score_2d[sk_indices]
+                            if kpt_score.min() > kpt_thr and kpt_score_2d.min() > kpt_thr:
+                                _color = link_color[sk_id] / 255.
+                                ax.plot(xs_3d, ys_3d, zs_3d, color=_color, zdir='z')
+
+                    fig.tight_layout()
+                    fig.canvas.draw()
 
                 # Convert the figure to a numpy array
                 pred_img_data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
@@ -244,7 +262,8 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
 
                 plt.close(fig)
 
-                pose3d_data_list.append(pred_img_data)  # Append the image to the list
+                # append to the pose3d_data_dic
+                pose3d_data_dic[track_ids[idx]] = pred_img_data
 
         if 'keypoints' in pred_instances:
             keypoints = pred_instances.get('keypoints', pred_instances.keypoints)
@@ -265,7 +284,32 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
                                     keypoints_visible, track_ids, 1, show_kpt_idx,
                                     'Track id')
 
-        return pose3d_data_list 
+        if need_dummy_plot:  
+            num_dummy_plots = num_instances - len(pose3d_data_dic)
+            for i in range(num_dummy_plots):
+                fig = plt.figure(figsize=(plot_size/100, plot_size/100), dpi=100)
+                ax = fig.add_subplot(111, projection='3d')
+                ax.view_init(elev=axis_elev, azim=axis_azimuth)
+                ax.set_aspect('auto')
+                ax.set_xticks([])
+                ax.set_yticks([])
+                ax.set_zticks([])
+                ax.set_xticklabels([])
+                ax.set_yticklabels([])
+                ax.set_zticklabels([])
+                ax.set_title('NO DATA', color='white')
+                ax.title.set_fontsize(20)
+                fig.tight_layout()
+                fig.canvas.draw()
+                pred_img_data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+                if not pred_img_data.any():
+                    pred_img_data = np.full((plot_size, plot_size, 3), 255)
+                else:
+                    pred_img_data = pred_img_data.reshape(plot_size, plot_size, 3)
+                plt.close(fig)
+                pose3d_data_dic[-1 * (i + 2)] = pred_img_data
+
+        return pose3d_data_dic 
 
     def _draw_instances_kpts(self,
                              image: np.ndarray,
@@ -545,7 +589,7 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
             scores_2d = np.squeeze(
                 convert_keypoint_definition(scores_2d, dataset_2d, dataset_3d),
                 axis=-1)
-        pose3d_data_list = self._draw_3d_data_samples(
+        pose3d_data_dic = self._draw_3d_data_samples(
             data_sample,
             track_ids,
             kpt_thr=kpt_thr,
@@ -561,4 +605,4 @@ class Pose3dLocalVisualizer(PoseLocalVisualizer):
         if pose_2d_data is not None:
             pose_2d_data = cv2.cvtColor(pose_2d_data, cv2.COLOR_BGR2RGB)
 
-        return pose_2d_data, pose3d_data_list
+        return pose_2d_data, pose3d_data_dic
