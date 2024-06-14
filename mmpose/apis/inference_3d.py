@@ -305,6 +305,7 @@ def inference_pose_lifter_model(model,
                     center = np.array([[(bbox[0] + bbox[2]) / 2,
                                         (bbox[1] + bbox[3]) / 2]])
                     scale = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
+                    scale += 1e-6                  
                     keypoints.append((kpt[:, :2] - center) / scale *
                                      bbox_scale + bbox_center)
                 else:
